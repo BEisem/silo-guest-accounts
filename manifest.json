@@ -1,0 +1,108 @@
+{
+  "plugin_id": "beisem.guest-accounts",
+  "version": "0.1.0",
+  "checksum": "__CHECKSUM__",
+  "silo_api_version": "v1",
+  "category": "Administration",
+  "supported_platforms": [
+    {
+      "os": "linux",
+      "arch": "amd64"
+    },
+    {
+      "os": "linux",
+      "arch": "arm64"
+    }
+  ],
+  "capabilities": [
+    {
+      "type": "scheduled_task.v1",
+      "id": "expire",
+      "display_name": "Guest accounts: expire accounts",
+      "description": "Disables accounts whose access has ended, and deletes them after the grace period if that is turned on. The plugin also checks every few minutes on its own; give this task a 15-minute interval as a safety net."
+    },
+    {
+      "type": "http_routes.v1",
+      "id": "pages",
+      "display_name": "Guest accounts page",
+      "description": "Create time-limited accounts, set or extend expiry dates and choose which libraries each account can see."
+    }
+  ],
+  "http_routes": [
+    {
+      "id": "admin-page",
+      "method": "GET",
+      "path": "/admin/",
+      "access": "admin",
+      "navigable": true,
+      "navigation_label": "Guest accounts",
+      "navigation_kind": "admin"
+    },
+    {
+      "id": "admin-api",
+      "method": "*",
+      "path": "/api/admin/*",
+      "access": "admin"
+    }
+  ],
+  "global_config_schema": [
+    {
+      "key": "silo",
+      "title": "Silo connection",
+      "description": "An API key the plugin uses to manage accounts. Create it under Settings → API keys with the admin:users scope; add admin:access-groups:read too if you use access groups.",
+      "required": true,
+      "json_schema": "{\"type\":\"object\",\"properties\":{\"api_key\":{\"type\":\"string\"},\"base_url\":{\"type\":\"string\"}},\"additionalProperties\":false}",
+      "admin_form": {
+        "fields": [
+          {
+            "key": "api_key",
+            "label": "Silo API key",
+            "description": "Scopes: admin:users (required) and admin:access-groups:read (optional). Starts with sa_. Leave blank to keep the saved key.",
+            "control": "ADMIN_FORM_CONTROL_PASSWORD",
+            "secret": true,
+            "required": true
+          },
+          {
+            "key": "base_url",
+            "label": "Internal API URL override",
+            "description": "Leave empty; the plugin asks Silo for its own listener.",
+            "control": "ADMIN_FORM_CONTROL_TEXT",
+            "placeholder": "http://127.0.0.1:8080"
+          }
+        ],
+        "sections": [
+          {
+            "key": "main",
+            "title": "Connection",
+            "field_keys": [
+              "api_key"
+            ]
+          },
+          {
+            "key": "advanced",
+            "title": "Advanced",
+            "collapsible": true,
+            "collapsed_default": true,
+            "field_keys": [
+              "base_url"
+            ]
+          }
+        ],
+        "submit_label": "Save connection"
+      }
+    }
+  ],
+  "presentation": {
+    "display_name": "Guest Accounts",
+    "summary": "Time-limited Silo accounts: give someone access for a set number of days, then the account is disabled automatically. Manage which libraries each account can see from the same page.",
+    "description_markdown": "Adds a **Guest accounts** page to the admin menu.\n\n- Create an account with an expiry: a number of days or an exact date and time\n- Set, extend or remove the expiry on any existing non-admin account\n- When access ends the account is disabled, which signs it out everywhere; optionally delete it after a grace period\n- Extending an expired account turns it back on\n- Choose each account's libraries (all, or exactly the ones you pick), or put it in an access group\n- Library presets for the combinations you use often\n- An activity log of everything the plugin changed\n\nAccounts are changed through Silo's own admin API with a scoped `admin:users` key, so Silo's rules still apply: administrator accounts and the Owner are never touched.",
+    "setup_markdown": "1. Create an API key under **Settings → API keys** with the `admin:users` scope (add `admin:access-groups:read` if you use access groups) and paste it into **Silo connection**.\n2. Open **Guest accounts** in the admin menu.\n3. In **Scheduled Tasks**, give **Guest accounts: expire accounts** a 15-minute interval as a safety net.",
+    "publisher_name": "BEisem",
+    "license_spdx": "MIT",
+    "homepage_url": "https://github.com/BEisem/silo-guest-accounts",
+    "source_url": "https://github.com/BEisem/silo-guest-accounts",
+    "support_url": "https://github.com/BEisem/silo-guest-accounts/issues",
+    "changelog_url": "https://github.com/BEisem/silo-guest-accounts/releases",
+    "publisher_url": "https://github.com/BEisem"
+  }
+}

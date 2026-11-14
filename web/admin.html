@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="__CSP__">
+<title>Guest accounts</title>
+<style>
+:root {
+  --bg: #f6f7f9; --panel: #ffffff; --panel-2: #f0f2f5; --text: #16181d; --muted: #5d6470;
+  --line: #e1e4e9; --accent: #6b4dff; --accent-text: #ffffff; --ok: #1f8a4c; --warn: #b26a00; --bad: #c53030;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --text: #f2f3f5; --muted: #9aa0ab;
+    --line: #2a2f39; --accent: #8a72ff; --ok: #4ccb84; --warn: #f0a938; --bad: #ff6b6b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1115; --panel: #171a21; --panel-2: #1e222b; --text: #f2f3f5; --muted: #9aa0ab;
+  --line: #2a2f39; --accent: #8a72ff; --ok: #4ccb84; --warn: #f0a938; --bad: #ff6b6b;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+.wrap { max-width: 1300px; margin: 0 auto; padding: 24px 20px 60px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-bottom: 18px; }
+h1 { font-size: 22px; margin: 0; }
+h2 { font-size: 16px; margin: 0 0 12px; }
+h3 { font-size: 14px; margin: 14px 0 6px; }
+.sub, .muted { color: var(--muted); }
+nav.tabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 20px; }
+nav.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); padding: 10px 14px; font: inherit; font-weight: 600; cursor: pointer; border-radius: 0; }
+nav.tabs button[aria-selected="true"] { color: var(--text); border-bottom-color: var(--accent); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+.grid { display: grid; gap: 16px; }
+.cols-2 { grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); }
+.cols-4 { grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); }
+label.f, div.f { display: block; margin-bottom: 12px; }
+label.f > span, div.f > span { display: block; font-weight: 600; margin-bottom: 4px; }
+small.h, .hint { display: block; color: var(--muted); font-size: 12px; margin-top: 3px; }
+input[type=text], input[type=email], input[type=number], input[type=password], input[type=search], input[type=datetime-local], select {
+  width: 100%; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font: inherit;
+}
+.check { display: flex; gap: 8px; align-items: flex-start; margin: 6px 0; }
+.check input { margin-top: 3px; }
+button { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 7px 13px; font: inherit; font-weight: 600; cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: transparent; }
+button.danger { color: var(--bad); }
+button.small { padding: 4px 9px; font-size: 12.5px; }
+button:disabled { opacity: .55; cursor: default; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.spacer { flex: 1; }
+.banner { border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; border: 1px solid; }
+.banner.warn { border-color: color-mix(in srgb, var(--warn) 45%, transparent); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.banner.bad { border-color: color-mix(in srgb, var(--bad) 40%, transparent); background: color-mix(in srgb, var(--bad) 10%, transparent); }
+.banner.ok { border-color: color-mix(in srgb, var(--ok) 40%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.stat { font-size: 26px; font-weight: 700; }
+.table-wrap { overflow-x: auto; }
+table.list { width: 100%; border-collapse: collapse; }
+table.list th, table.list td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.list th { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+table.list td.actions { white-space: nowrap; text-align: right; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--line); white-space: nowrap; }
+.pill.ok { color: var(--ok); } .pill.bad { color: var(--bad); } .pill.warn { color: var(--warn); } .pill.acc { color: var(--accent); }
+.toast { position: fixed; right: 18px; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 10px; max-width: min(420px, calc(100vw - 36px)); box-shadow: 0 8px 30px rgba(0,0,0,.25); z-index: 10; }
+.toast.bad { background: var(--bad); color: #fff; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+dialog { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 14px; padding: 20px; width: min(600px, calc(100vw - 32px)); }
+dialog::backdrop { background: rgba(0,0,0,.45); }
+.libs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px 12px; margin: 6px 0 4px; }
+.libs label { display: flex; gap: 6px; align-items: center; }
+.libs[aria-disabled="true"] { opacity: .5; pointer-events: none; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; flex-wrap: wrap; }
+.seg button { border: 0; border-radius: 0; background: var(--panel-2); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.secret { display: flex; gap: 8px; align-items: center; }
+.secret code { font-size: 16px; padding: 6px 10px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); user-select: all; }
+.preset { border: 1px solid var(--line); border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+.err { color: var(--bad); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Guest accounts</h1>
+      <div class="sub">Time-limited access and per-account libraries.</div>
+    </div>
+    <div class="spacer"></div>
+    <button id="refresh">Refresh</button>
+  </header>
+  <div id="banners"></div>
+  <nav class="tabs" role="tablist">
+    <button role="tab" data-tab="accounts" aria-selected="true">Accounts</button>
+    <button role="tab" data-tab="new" aria-selected="false">New guest</button>
+    <button role="tab" data-tab="presets" aria-selected="false">Library presets</button>
+    <button role="tab" data-tab="settings" aria-selected="false">Settings</button>
+    <button role="tab" data-tab="log" aria-selected="false">Activity</button>
+  </nav>
+
+  <section data-panel="accounts">
+    <div class="grid cols-4">
+      <div class="panel"><div class="muted">Timed accounts active</div><div class="stat" id="st-active">–</div></div>
+      <div class="panel"><div class="muted">Expiring within 3 days</div><div class="stat" id="st-soon">–</div></div>
+      <div class="panel"><div class="muted">Expired (disabled)</div><div class="stat" id="st-expired">–</div></div>
+      <div class="panel"><div class="muted">Last check</div><div class="stat" id="st-last" style="font-size:17px">–</div><div class="hint" id="st-last-detail"></div></div>
+    </div>
+    <div class="panel">
+      <div class="row" style="margin-bottom:12px">
+        <input type="search" id="q" placeholder="Search username or email" style="max-width:280px">
+        <select id="filter" style="max-width:200px">
+          <option value="all">All accounts</option>
+          <option value="timed">With an expiry</option>
+          <option value="soon">Expiring within 3 days</option>
+          <option value="expired">Expired</option>
+          <option value="untimed">No expiry</option>
+        </select>
+        <label class="check" style="margin:0"><input type="checkbox" id="hide-admins" checked> Hide admins</label>
+        <div class="spacer"></div>
+        <button id="run-now">Check expiries now</button>
+      </div>
+      <div class="table-wrap">
+        <table class="list">
+          <thead><tr><th>Account</th><th>Status</th><th>Libraries</th><th>Access ends</th><th></th></tr></thead>
+          <tbody id="rows"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="panel" id="removed-panel" hidden>
+      <h2>Removed accounts</h2>
+      <p class="muted">Accounts that had an expiry and no longer exist in Silo. They drop off this list after 30 days.</p>
+      <div class="table-wrap"><table class="list"><thead><tr><th>Account</th><th>Access ended</th><th>Removed</th></tr></thead><tbody id="removed-rows"></tbody></table></div>
+    </div>
+  </section>
+
+  <section data-panel="new" hidden>
+    <div class="panel" id="created" hidden></div>
+    <form class="panel" id="new-form" autocomplete="off">
+      <h2>New guest account</h2>
+      <div class="grid cols-2">
+        <div>
+          <label class="f"><span>Username</span><input type="text" name="username" required></label>
+          <label class="f"><span>Email</span><input type="email" name="email" required><small class="h">Silo needs an address on every account; it is also where a password reset link would go.</small></label>
+          <label class="f"><span>Password</span><input type="text" name="password" minlength="8" maxlength="72" placeholder="Leave blank to generate one"><small class="h">8–72 characters. A generated password is shown once after the account is created.</small></label>
+          <label class="check"><input type="checkbox" name="require_password_change" checked><span>Make them choose a new password at first sign-in</span></label>
+          <label class="check"><input type="checkbox" name="create_default_profile" checked><span>Create a profile for them</span></label>
+          <label class="f" style="margin-left:24px"><span>Profile name</span><input type="text" name="profile_name" maxlength="100" placeholder="Defaults to the username"></label>
+          <label class="check"><input type="checkbox" name="allow_downloads"><span>Allow offline downloads<small class="h">Downloaded files have no expiry in Silo: they keep playing on the device after the account is disabled.</small></span></label>
+          <label class="check"><input type="checkbox" name="allow_requests"><span>Allow requests<small class="h">Requests go straight to Sonarr/Radarr if they are auto-approved.</small></span></label>
+        </div>
+        <div>
+          <div class="f"><span>Access</span><div id="new-expiry"></div></div>
+          <label class="f"><span>Note</span><input type="text" name="note" maxlength="300" placeholder="Optional, e.g. who it's for"></label>
+        </div>
+      </div>
+      <h3>Libraries</h3>
+      <div id="new-access"></div>
+      <div class="row" style="margin-top:14px"><div class="spacer"></div><button class="primary" type="submit">Create account</button></div>
+    </form>
+  </section>
+
+  <section data-panel="presets" hidden>
+    <div class="panel">
+      <h2>Library presets</h2>
+      <p class="muted">Named library selections you can apply when creating a guest or changing an account's libraries.</p>
+      <div id="presets"></div>
+      <div class="row"><button id="add-preset">Add preset</button><div class="spacer"></div><button class="primary" id="save-presets">Save presets</button></div>
+    </div>
+  </section>
+
+  <section data-panel="settings" hidden>
+    <form class="panel" id="settings-form">
+      <h2>Settings</h2>
+      <div class="grid cols-2">
+        <div>
+          <label class="f"><span>Default days of access</span><input type="number" name="default_days" min="1" max="3650"><small class="h">Prefills the New guest form.</small></label>
+          <label class="f"><span>Delete expired accounts after (days)</span><input type="number" name="delete_after_days" min="0" max="3650"><small class="h">0 never deletes: expired accounts stay disabled so you can turn them back on. Deleting removes the account, its profiles and watch history.</small></label>
+        </div>
+        <div>
+          <label class="check"><input type="checkbox" name="reenable_on_extend"><span>Turn an expired account back on when its expiry is extended<small class="h">Only accounts the plugin disabled; an account you disabled yourself is left off.</small></span></label>
+          <label class="check"><input type="checkbox" name="guest_downloads"><span>New guests may make offline downloads<small class="h">Off by default. Silo downloads have no expiry, so they outlive the account.</small></span></label>
+          <label class="check"><input type="checkbox" name="guest_requests"><span>New guests may request titles<small class="h">Off by default.</small></span></label>
+          <label class="check"><input type="checkbox" name="paused"><span>Pause: don't disable or delete anything<small class="h">Expiry dates are still kept and shown. Accounts whose time ran out while paused are disabled when you un-pause.</small></span></label>
+        </div>
+      </div>
+      <div class="row"><div class="spacer"></div><button class="primary" type="submit">Save settings</button></div>
+    </form>
+    <div class="panel">
+      <h2>How expiry works</h2>
+      <p class="muted">While the plugin is running it checks every 5 minutes, and once more each time Silo runs the <b>Guest accounts: expire accounts</b> scheduled task. When an account's time is up it is disabled, which signs it out of every app and device straight away. Admin accounts and the Owner are never changed.</p>
+      <p class="muted">Turning an expired account back on by hand in Silo is respected: the plugin won't disable it again until you give it a new expiry.</p>
+    </div>
+  </section>
+
+  <section data-panel="log" hidden>
+    <div class="panel">
+      <h2>Activity</h2>
+      <div class="table-wrap"><table class="list"><thead><tr><th>When</th><th>Account</th><th>What</th><th>By</th></tr></thead><tbody id="log-rows"></tbody></table></div>
+    </div>
+  </section>
+</div>
+
+<dialog id="expiry-dlg">
+  <form method="dialog" id="expiry-form">
+    <h2>Access for <span id="expiry-name"></span></h2>
+    <p class="muted" id="expiry-current"></p>
+    <div id="expiry-picker"></div>
+    <label class="f"><span>Note</span><input type="text" name="note" maxlength="300" placeholder="Optional"></label>
+    <p class="err" id="expiry-dl-warn" hidden>This account can make offline downloads. Anything already downloaded keeps playing on its devices after access ends: Silo downloads have no expiry. Turn downloads off in Silo's account settings if that matters.</p>
+    <label class="check" id="expiry-reenable-row" hidden><input type="checkbox" name="reenable"><span>Turn the account back on</span></label>
+    <div class="err" id="expiry-err"></div>
+    <div class="row" style="margin-top:10px"><button value="cancel" formnovalidate>Cancel</button><div class="spacer"></div><button class="primary" value="save" id="expiry-save">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="access-dlg">
+  <form method="dialog" id="access-form">
+    <h2>Libraries for <span id="access-name"></span></h2>
+    <div id="access-picker"></div>
+    <div class="err" id="access-err"></div>
+    <div class="row" style="margin-top:10px"><button value="cancel" formnovalidate>Cancel</button><div class="spacer"></div><button class="primary" value="save">Save</button></div>
+  </form>
+</dialog>
+
+<dialog id="cdlg">
+  <form method="dialog">
+    <h2 id="cdlg-title">Are you sure?</h2>
+    <p id="cdlg-body" class="muted"></p>
+    <div class="row"><div class="spacer"></div><button value="no">Cancel</button><button class="primary" value="yes" id="cdlg-yes">Confirm</button></div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const qs = new URLSearchParams(location.search);
+  const theme = qs.get("theme");
+  if (theme === "dark" || theme === "light") document.documentElement.dataset.theme = theme;
+
+  const API = "../api/admin/";
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const DAY = 86400000;
+
+  let state = null;
+  let presetsDraft = [];
+
+  async function api(path, opts = {}) {
+    const init = { credentials: "same-origin", method: opts.method || "GET" };
+    // Every change is sent as JSON: the plugin refuses anything else, which
+    // is what stops a form on another site from posting here.
+    if (init.method !== "GET") {
+      init.headers = { "Content-Type": "application/json" };
+      init.body = JSON.stringify(opts.body === undefined ? {} : opts.body);
+    }
+    const res = await fetch(API + path, init);
+    let data = null;
+    try { data = await res.json(); } catch { /* not JSON */ }
+    if (!res.ok) throw new Error((data && data.error) || `${res.status} ${res.statusText}`);
+    return data;
+  }
+
+  function toast(msg, bad = false) {
+    $$(".toast").forEach((old) => old.remove());
+    const t = document.createElement("div");
+    t.className = "toast" + (bad ? " bad" : "");
+    t.setAttribute("role", "status");
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), bad ? 8000 : 3500);
+  }
+
+  function confirmBox(title, body, yes = "Confirm") {
+    const d = $("#cdlg");
+    $("#cdlg-title").textContent = title;
+    $("#cdlg-body").textContent = body;
+    $("#cdlg-yes").textContent = yes;
+    d.returnValue = "";
+    d.showModal();
+    return new Promise((resolve) => d.addEventListener("close", () => resolve(d.returnValue === "yes"), { once: true }));
+  }
+
+  // ---- time helpers ------------------------------------------------------
+  const nowMs = () => Date.now();
+  function fmtDate(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }
+  function rel(iso) {
+    const diff = new Date(iso).getTime() - nowMs();
+    const abs = Math.abs(diff);
+    let s;
+    if (abs < 3600000) s = Math.max(1, Math.round(abs / 60000)) + " min";
+    else if (abs < 2 * DAY) s = Math.round(abs / 3600000) + " h";
+    else s = Math.round(abs / DAY) + " days";
+    return diff >= 0 ? "in " + s : s + " ago";
+  }
+  // Server log lines carry RFC 3339 times; show them in the browser's zone.
+  const localTimes = (text) => String(text).replace(/\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:\d\d)/g, (m) => fmtDate(m));
+  function toLocalInput(ms) {
+    const d = new Date(ms);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  // ---- library helpers ---------------------------------------------------
+  function libName(id) {
+    const l = (state.libraries || []).find((x) => x.id === id);
+    return l ? l.name : "#" + id;
+  }
+  function groupName(id) {
+    const g = (state.access_groups || []).find((x) => x.id === id);
+    return g ? g.name : "group #" + id;
+  }
+  function libSummary(ids) {
+    if (ids == null) return "All libraries";
+    if (ids.length === 0) return "No libraries";
+    return ids.map(libName).join(", ");
+  }
+
+  // accessPicker builds the library chooser used by the New guest form, the
+  // Libraries dialog and presets. initial: {all_libraries, library_ids,
+  // access_group_id}. Returns { value() } giving the API's Access body.
+  function accessPicker(el, initial, opts = {}) {
+    const id = "ap" + Math.random().toString(36).slice(2, 8);
+    const presets = state.presets || [];
+    const groups = state.access_groups;
+    const all = initial.all_libraries ?? (initial.library_ids == null);
+    const picked = new Set(initial.library_ids || []);
+    const libs = state.libraries || [];
+    el.innerHTML = `
+      ${opts.presets !== false && presets.length ? `<label class="f"><span>Preset</span><select data-k="preset"><option value="">Choose a preset to fill this in…</option>${presets.map((p) => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join("")}</select></label>` : ""}
+      <label class="check"><input type="radio" name="${id}-mode" value="all" ${all ? "checked" : ""}><span>All libraries<small class="h">${opts.groupHint || "Or, for an account in an access group, the group's libraries."}</small></span></label>
+      <label class="check"><input type="radio" name="${id}-mode" value="some" ${all ? "" : "checked"}><span>Only these libraries</span></label>
+      <div class="libs" data-k="libs" aria-disabled="${all}">
+        ${libs.length ? libs.map((l) => `<label><input type="checkbox" value="${esc(l.id)}" ${picked.has(l.id) ? "checked" : ""}> ${esc(l.name)}</label>`).join("") : `<span class="muted">Silo didn't list any libraries.</span>`}
+      </div>
+      <small class="h" style="margin-left:24px">Nothing ticked means the account sees no libraries at all.</small>
+      ${groups ? `<label class="f" style="margin-top:12px"><span>Access group</span><select data-k="group">
+        ${opts.keepGroup !== false ? `<option value="__keep">Leave as it is${initial.access_group_id ? " (" + esc(groupName(initial.access_group_id)) + ")" : ""}</option>` : ""}
+        <option value="">No access group</option>
+        ${groups.map((g) => `<option value="${esc(g.id)}">${esc(g.name)} (${esc(libSummary(g.library_ids))})</option>`).join("")}
+      </select><small class="h">An account's own library list above overrides the group's.</small></label>` : (state.groups_note ? `<small class="h" style="margin-top:10px">${esc(state.groups_note)}</small>` : "")}
+    `;
+    const libsEl = $('[data-k="libs"]', el);
+    const groupEl = $('[data-k="group"]', el);
+    if (groupEl && opts.keepGroup === false) groupEl.value = initial.access_group_id || "";
+    const sync = () => { libsEl.setAttribute("aria-disabled", String($(`input[name="${id}-mode"]:checked`, el).value === "all")); };
+    $$(`input[name="${id}-mode"]`, el).forEach((r) => r.addEventListener("change", sync));
+    const presetEl = $('[data-k="preset"]', el);
+    if (presetEl) presetEl.addEventListener("change", () => {
+      const p = presets.find((x) => x.id === presetEl.value);
+      if (!p) return;
+      $(`input[name="${id}-mode"][value="${p.all_libraries ? "all" : "some"}"]`, el).checked = true;
+      const set = new Set(p.library_ids || []);
+      $$('input[type=checkbox]', libsEl).forEach((c) => { c.checked = set.has(c.value); });
+      if (groupEl && p.access_group_id) groupEl.value = p.access_group_id;
+      sync();
+    });
+    return {
+      value() {
+        const allMode = $(`input[name="${id}-mode"]:checked`, el).value === "all";
+        const out = { all_libraries: allMode, library_ids: allMode ? null : $$('input[type=checkbox]:checked', libsEl).map((c) => c.value) };
+        if (groupEl && groupEl.value !== "__keep") { out.group_set = true; out.access_group_id = groupEl.value; }
+        return out;
+      },
+    };
+  }
+
+  // expiryPicker builds the "how long" chooser. Returns { value() } giving
+  // the API's expiry body, or throws with a message.
+  function expiryPicker(el, opts = {}) {
+    const id = "ep" + Math.random().toString(36).slice(2, 8);
+    const modes = opts.extend ? ["days", "extend", "date", "none"] : ["days", "date", "none"];
+    const labels = { days: "For", extend: "Extend by", date: "Until", none: "No expiry" };
+    let mode = opts.mode || "days";
+    const days = opts.days || state.settings.default_days || 7;
+    el.innerHTML = `
+      <div class="seg" role="group">${modes.map((m) => `<button type="button" data-m="${m}" aria-pressed="${m === mode}">${labels[m]}</button>`).join("")}</div>
+      <div data-k="span" style="margin-top:10px">
+        <div class="row"><input type="number" data-k="days" min="0" max="3650" value="${days}" style="width:90px"> <span>days</span>
+          <input type="number" data-k="hours" min="0" max="23" value="0" style="width:70px"> <span>hours</span></div>
+        <div class="row" style="margin-top:8px">${[1, 3, 7, 14, 30, 90].map((d) => `<button type="button" class="small" data-quick="${d}">${d}d</button>`).join("")}</div>
+        <small class="h" data-k="span-hint"></small>
+      </div>
+      <div data-k="date" style="margin-top:10px" hidden><input type="datetime-local" data-k="at" value="${toLocalInput(opts.at ? new Date(opts.at).getTime() : nowMs() + days * DAY)}"><small class="h">In your browser's time zone.</small></div>
+      <div data-k="none" style="margin-top:10px" hidden><small class="h">${opts.extend ? "The account keeps its current enabled state and never expires." : "A normal account with no time limit."}</small></div>
+    `;
+    const show = () => {
+      $$(".seg button", el).forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.m === mode)));
+      $('[data-k="span"]', el).hidden = !(mode === "days" || mode === "extend");
+      $('[data-k="date"]', el).hidden = mode !== "date";
+      $('[data-k="none"]', el).hidden = mode !== "none";
+      hint();
+    };
+    const span = () => (Number($('[data-k="days"]', el).value) || 0) * DAY + (Number($('[data-k="hours"]', el).value) || 0) * 3600000;
+    const hint = () => {
+      const h = $('[data-k="span-hint"]', el);
+      let from = nowMs();
+      if (mode === "extend" && opts.current && new Date(opts.current).getTime() > from) from = new Date(opts.current).getTime();
+      h.textContent = span() > 0 ? "Access ends " + fmtDate(new Date(from + span()).toISOString()) : "";
+    };
+    $$(".seg button", el).forEach((b) => b.addEventListener("click", () => { mode = b.dataset.m; show(); if (opts.onMode) opts.onMode(mode); }));
+    $$("[data-quick]", el).forEach((b) => b.addEventListener("click", () => { $('[data-k="days"]', el).value = b.dataset.quick; $('[data-k="hours"]', el).value = 0; hint(); }));
+    $$('[data-k="days"], [data-k="hours"]', el).forEach((i) => i.addEventListener("input", hint));
+    show();
+    return {
+      mode: () => mode,
+      value() {
+        if (mode === "none") return { mode: "none" };
+        if (mode === "date") {
+          const v = $('[data-k="at"]', el).value;
+          if (!v) throw new Error("Pick a date and time.");
+          const t = new Date(v);
+          if (t.getTime() <= nowMs()) throw new Error("The date must be in the future.");
+          return { mode: "date", expires_at: t.toISOString() };
+        }
+        if (span() <= 0) throw new Error("Enter a number of days or hours.");
+        return { mode, days: Number($('[data-k="days"]', el).value) || 0, hours: Number($('[data-k="hours"]', el).value) || 0 };
+      },
+    };
+  }
+
+  // ---- rendering ---------------------------------------------------------
+  function grantStatus(g, acct) {
+    if (!g) return { key: "untimed", html: `<span class="muted">Never</span>` };
+    const t = new Date(g.expires_at).getTime();
+    if (g.status === "expired") {
+      const back = acct && acct.enabled;
+      return { key: "expired", html: `<span class="pill bad">Expired</span> <span class="muted">${esc(fmtDate(g.expires_at))}</span>${back ? `<div class="hint">Turned back on by hand; won't be disabled again.</div>` : ""}${g.last_error ? `<div class="err">${esc(g.last_error)}</div>` : ""}` };
+    }
+    const soon = t - nowMs() < 3 * DAY;
+    const pill = t <= nowMs() ? `<span class="pill warn">Due now</span>` : `<span class="pill ${soon ? "warn" : "acc"}">${esc(rel(g.expires_at))}</span>`;
+    return { key: soon ? "soon" : "timed", html: `${pill} <span class="muted">${esc(fmtDate(g.expires_at))}</span>${g.note ? `<div class="hint">${esc(g.note)}</div>` : ""}${g.last_error ? `<div class="err">${esc(g.last_error)}</div>` : ""}` };
+  }
+
+  function render() {
+    const b = [];
+    for (const p of state.problems || []) b.push(`<div class="banner bad">${esc(p)}</div>`);
+    if (state.accounts_error) b.push(`<div class="banner bad">Couldn't list accounts: ${esc(state.accounts_error)}</div>`);
+    if (state.settings.paused) b.push(`<div class="banner warn">Expiry is paused in Settings: nothing will be disabled or deleted.</div>`);
+    const lr = state.last_run;
+    if (lr && lr.errors && lr.errors.length) b.push(`<div class="banner warn">The last check had problems:<ul>${lr.errors.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>`);
+    $("#banners").innerHTML = b.join("");
+
+    const accts = state.accounts || [];
+    let active = 0, soon = 0, expired = 0;
+    for (const a of accts) {
+      if (!a.grant) continue;
+      if (a.grant.status === "expired") expired++;
+      else { active++; if (new Date(a.grant.expires_at).getTime() - nowMs() < 3 * DAY) soon++; }
+    }
+    $("#st-active").textContent = active;
+    $("#st-soon").textContent = soon;
+    $("#st-expired").textContent = expired;
+    if (lr) {
+      $("#st-last").textContent = rel(lr.time);
+      $("#st-last-detail").textContent = lr.skipped ? "Skipped: " + lr.skipped : `${lr.disabled} disabled, ${lr.deleted} deleted · ${lr.source}`;
+    } else {
+      $("#st-last").textContent = "Not yet";
+      $("#st-last-detail").textContent = "Since the plugin last started.";
+    }
+    renderRows();
+    renderRemoved();
+    renderLog();
+  }
+
+  function renderRows() {
+    const q = $("#q").value.trim().toLowerCase();
+    const f = $("#filter").value;
+    const hideAdmins = $("#hide-admins").checked;
+    const rows = (state.accounts || []).filter((a) => {
+      if (hideAdmins && !a.manageable) return false;
+      if (q && !(`${a.username} ${a.email}`.toLowerCase().includes(q))) return false;
+      const k = grantStatus(a.grant, a).key;
+      if (f === "timed") return !!a.grant;
+      if (f === "soon") return k === "soon";
+      if (f === "expired") return k === "expired";
+      if (f === "untimed") return !a.grant;
+      return true;
+    });
+    rows.sort((x, y) => {
+      const tx = x.grant && x.grant.status === "active" ? new Date(x.grant.expires_at).getTime() : Infinity;
+      const ty = y.grant && y.grant.status === "active" ? new Date(y.grant.expires_at).getTime() : Infinity;
+      return tx - ty || x.username.localeCompare(y.username);
+    });
+    if (!rows.length) {
+      $("#rows").innerHTML = `<tr><td colspan="5" class="muted">${(state.accounts || []).length ? "No accounts match." : "No accounts to show."}</td></tr>`;
+      return;
+    }
+    $("#rows").innerHTML = rows.map((a) => {
+      const role = a.is_owner ? `<span class="pill">Owner</span>` : a.role === "admin" ? `<span class="pill">Admin</span>` : "";
+      const pol = a.effective_policy || {};
+      let st = a.enabled ? `<span class="pill ok">Enabled</span>` : `<span class="pill bad">Disabled</span>`;
+      if (a.grant && pol.download_allowed) st += `<div class="hint" style="color:var(--warn)" title="Offline downloads keep playing after the account is disabled">Downloads on</div>`;
+      // The account's own list wins; otherwise what Silo resolved (group or all).
+      const eff = a.library_ids != null ? a.library_ids : (a.effective_policy ? a.effective_policy.library_ids : null);
+      let libs = esc(libSummary(eff));
+      const src = [];
+      if (a.access_group_id) src.push("group: " + esc(groupName(a.access_group_id)));
+      if (a.library_ids != null && a.access_group_id) src.push("own list overrides it");
+      if (src.length) libs += `<div class="hint">${src.join(" · ")}</div>`;
+      const actions = a.manageable ? `
+        <button class="small" data-act="expiry" data-id="${esc(a.id)}">${a.grant ? "Change access" : "Set expiry"}</button>
+        <button class="small" data-act="libs" data-id="${esc(a.id)}">Libraries</button>
+        <button class="small" data-act="${a.enabled ? "disable" : "enable"}" data-id="${esc(a.id)}">${a.enabled ? "Disable" : "Enable"}</button>
+        <button class="small danger" data-act="delete" data-id="${esc(a.id)}">Delete</button>` : `<span class="muted" style="font-size:12px">Managed in Silo</span>`;
+      return `<tr>
+        <td><b>${esc(a.username)}</b> ${role}<div class="hint">${esc(a.email)}${a.last_active_at ? " · active " + esc(rel(a.last_active_at)) : ""}</div></td>
+        <td>${st}</td>
+        <td style="max-width:320px">${libs}</td>
+        <td>${grantStatus(a.grant, a).html}</td>
+        <td class="actions">${actions}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  function renderRemoved() {
+    const list = state.removed || [];
+    $("#removed-panel").hidden = !list.length;
+    $("#removed-rows").innerHTML = list.map((g) => `<tr><td><b>${esc(g.username || "#" + g.user_id)}</b>${g.note ? `<div class="hint">${esc(g.note)}</div>` : ""}</td><td>${esc(fmtDate(g.expires_at))}</td><td>${esc(fmtDate(g.updated_at))}</td></tr>`).join("");
+  }
+
+  function renderLog() {
+    const list = state.log || [];
+    $("#log-rows").innerHTML = list.length ? list.map((e) => `<tr>
+      <td style="white-space:nowrap">${esc(fmtDate(e.time))}</td>
+      <td>${esc(e.username || (e.user_id ? "#" + e.user_id : ""))}</td>
+      <td><b>${esc(e.action)}</b>${e.detail ? ` <span class="muted">${esc(localTimes(e.detail))}</span>` : ""}${e.error ? `<div class="err">${esc(e.error)}</div>` : ""}</td>
+      <td class="muted">${esc(e.by)}</td></tr>`).join("") : `<tr><td colspan="4" class="muted">Nothing yet.</td></tr>`;
+  }
+
+  // ---- account actions ---------------------------------------------------
+  const byId = (id) => (state.accounts || []).find((a) => a.id === id);
+
+  $("#rows").addEventListener("click", async (ev) => {
+    const btn = ev.target.closest("button[data-act]");
+    if (!btn) return;
+    const a = byId(btn.dataset.id);
+    if (!a) return;
+    const act = btn.dataset.act;
+    if (act === "expiry") return openExpiry(a);
+    if (act === "libs") return openAccess(a);
+    if (act === "disable" || act === "enable") {
+      const on = act === "enable";
+      if (!on && !(await confirmBox(`Disable ${a.username}?`, "They are signed out of every app and device straight away. You can turn the account back on at any time.", "Disable"))) return;
+      try { await api(`users/${a.id}/enabled`, { method: "PUT", body: { enabled: on } }); toast(on ? "Account enabled." : "Account disabled."); await load(); } catch (e) { toast(e.message, true); }
+    }
+    if (act === "delete") {
+      if (!(await confirmBox(`Delete ${a.username}?`, "This deletes the Silo account with its profiles, watch history and settings. It can't be undone. Disabling keeps everything if you might need it again.", "Delete account"))) return;
+      try { await api(`users/${a.id}`, { method: "DELETE" }); toast("Account deleted."); await load(); } catch (e) { toast(e.message, true); }
+    }
+  });
+
+  let expiryCtx = null;
+  function openExpiry(a) {
+    const g = a.grant;
+    $("#expiry-name").textContent = a.username;
+    $("#expiry-current").textContent = !g ? "No expiry at the moment." : g.status === "expired" ? `Expired ${fmtDate(g.expires_at)}.` : `Access ends ${fmtDate(g.expires_at)} (${rel(g.expires_at)}).`;
+    const form = $("#expiry-form");
+    form.note.value = g ? g.note || "" : "";
+    const expired = g && g.status === "expired" && !a.enabled;
+    $("#expiry-reenable-row").hidden = !expired;
+    form.reenable.checked = !!state.settings.reenable_on_extend;
+    $("#expiry-err").textContent = "";
+    $("#expiry-dl-warn").hidden = !(a.effective_policy && a.effective_policy.download_allowed);
+    const picker = expiryPicker($("#expiry-picker"), {
+      extend: !!g, mode: g && g.status === "active" ? "extend" : "days", current: g && g.expires_at, at: g && g.status === "active" ? g.expires_at : null,
+      onMode: (m) => { $("#expiry-reenable-row").hidden = !expired || m === "none"; },
+    });
+    expiryCtx = { a, picker };
+    $("#expiry-dlg").showModal();
+  }
+  $("#expiry-form").addEventListener("submit", async (ev) => {
+    if (ev.submitter && ev.submitter.value !== "save") return;
+    ev.preventDefault();
+    const { a, picker } = expiryCtx;
+    const form = $("#expiry-form");
+    let body;
+    try { body = picker.value(); } catch (e) { $("#expiry-err").textContent = e.message; return; }
+    try {
+      if (body.mode === "none") {
+        await api(`users/${a.id}/expiry`, { method: "DELETE" });
+        toast("Expiry removed.");
+      } else {
+        body.note = form.note.value;
+        if (!$("#expiry-reenable-row").hidden) body.reenable = form.reenable.checked;
+        const r = await api(`users/${a.id}/expiry`, { method: "PUT", body });
+        toast(r.warning || (r.reenabled ? "Saved, and the account is back on." : "Saved."), !!r.warning);
+      }
+      $("#expiry-dlg").close();
+      await load();
+    } catch (e) { $("#expiry-err").textContent = e.message; }
+  });
+
+  let accessCtx = null;
+  function openAccess(a) {
+    $("#access-name").textContent = a.username;
+    $("#access-err").textContent = "";
+    accessCtx = { a, picker: accessPicker($("#access-picker"), { library_ids: a.library_ids, access_group_id: a.access_group_id }) };
+    $("#access-dlg").showModal();
+  }
+  $("#access-form").addEventListener("submit", async (ev) => {
+    if (ev.submitter && ev.submitter.value !== "save") return;
+    ev.preventDefault();
+    const { a, picker } = accessCtx;
+    try {
+      await api(`users/${a.id}/access`, { method: "PUT", body: picker.value() });
+      toast("Libraries saved. The change applies on their next request.");
+      $("#access-dlg").close();
+      await load();
+    } catch (e) { $("#access-err").textContent = e.message; }
+  });
+
+  // ---- new guest ---------------------------------------------------------
+  let newExpiry = null, newAccess = null;
+  function buildNewForm() {
+    const f = $("#new-form");
+    f.allow_downloads.checked = !!state.settings.guest_downloads;
+    f.allow_requests.checked = !!state.settings.guest_requests;
+    newExpiry = expiryPicker($("#new-expiry"), { days: state.settings.default_days });
+    newAccess = accessPicker($("#new-access"), { all_libraries: true }, { keepGroup: false, groupHint: "Or the chosen access group's libraries." });
+  }
+  $("#new-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const f = ev.target;
+    let expiry;
+    try { expiry = newExpiry.value(); } catch (e) { toast(e.message, true); return; }
+    expiry.note = f.note.value;
+    const body = {
+      username: f.username.value.trim(), email: f.email.value.trim(), password: f.password.value,
+      require_password_change: f.require_password_change.checked,
+      create_default_profile: f.create_default_profile.checked, profile_name: f.profile_name.value.trim(),
+      allow_downloads: f.allow_downloads.checked, allow_requests: f.allow_requests.checked,
+      access: newAccess.value(), expiry,
+    };
+    const btn = f.querySelector("button[type=submit]");
+    btn.disabled = true;
+    try {
+      const r = await api("users", { method: "POST", body });
+      const c = $("#created");
+      c.hidden = false;
+      c.innerHTML = `<div class="banner ${r.warning ? "warn" : "ok"}" style="margin:0">
+        <b>${esc(body.username)}</b> was created${r.grant ? `; access ends ${esc(fmtDate(r.grant.expires_at))}` : " with no expiry"}.
+        ${r.warning ? `<div>${esc(r.warning)}</div>` : ""}
+        ${r.password ? `<div style="margin-top:10px">Password (shown once):</div><div class="secret"><code id="pw">${esc(r.password)}</code><button type="button" id="copy-pw" class="small">Copy</button></div>` : ""}
+      </div>`;
+      const cp = $("#copy-pw");
+      if (cp) cp.addEventListener("click", async () => { try { await navigator.clipboard.writeText(r.password); toast("Copied."); } catch { toast("Select the password and copy it.", true); } });
+      f.reset();
+      await load();
+      buildNewForm();
+      c.scrollIntoView({ behavior: "smooth", block: "start" });
+    } catch (e) { toast(e.message, true); }
+    btn.disabled = false;
+  });
+
+  // ---- presets -----------------------------------------------------------
+  function renderPresets() {
+    const el = $("#presets");
+    if (!presetsDraft.length) { el.innerHTML = `<p class="muted">No presets yet.</p>`; return; }
+    el.innerHTML = presetsDraft.map((p, i) => `<div class="preset" data-i="${i}">
+      <div class="row"><input type="text" data-k="name" value="${esc(p.name)}" placeholder="Preset name" style="max-width:300px"><div class="spacer"></div><button type="button" class="small danger" data-del="${i}">Remove</button></div>
+      <div data-k="picker" style="margin-top:8px"></div></div>`).join("");
+    presetsDraft.forEach((p, i) => {
+      const box = $(`.preset[data-i="${i}"]`, el);
+      p._picker = accessPicker($('[data-k="picker"]', box), { all_libraries: p.all_libraries, library_ids: p.library_ids, access_group_id: p.access_group_id }, { presets: false, keepGroup: false });
+      p._name = $('[data-k="name"]', box);
+    });
+  }
+  function collectPresets() {
+    return presetsDraft.map((p) => {
+      const v = p._picker ? p._picker.value() : p;
+      return { id: p.id || "", name: p._name ? p._name.value.trim() : p.name, all_libraries: v.all_libraries, library_ids: v.library_ids, access_group_id: v.access_group_id || "" };
+    });
+  }
+  $("#presets").addEventListener("click", (ev) => {
+    const d = ev.target.closest("[data-del]");
+    if (!d) return;
+    presetsDraft = collectPresets().map((p, i) => ({ ...p })).filter((_, i) => i !== Number(d.dataset.del));
+    renderPresets();
+  });
+  $("#add-preset").addEventListener("click", () => {
+    presetsDraft = collectPresets();
+    presetsDraft.push({ name: "", all_libraries: false, library_ids: [] });
+    renderPresets();
+  });
+  $("#save-presets").addEventListener("click", async () => {
+    try {
+      const saved = await api("presets", { method: "PUT", body: collectPresets() });
+      state.presets = saved;
+      presetsDraft = saved.map((p) => ({ ...p }));
+      renderPresets();
+      buildNewForm();
+      toast("Presets saved.");
+    } catch (e) { toast(e.message, true); }
+  });
+
+  // ---- settings ----------------------------------------------------------
+  function fillSettings() {
+    const f = $("#settings-form"), s = state.settings;
+    f.default_days.value = s.default_days;
+    f.delete_after_days.value = s.delete_after_days;
+    f.reenable_on_extend.checked = !!s.reenable_on_extend;
+    f.paused.checked = !!s.paused;
+    f.guest_downloads.checked = !!s.guest_downloads;
+    f.guest_requests.checked = !!s.guest_requests;
+  }
+  $("#settings-form").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const f = ev.target;
+    const body = { default_days: Number(f.default_days.value) || 7, delete_after_days: Number(f.delete_after_days.value) || 0, reenable_on_extend: f.reenable_on_extend.checked, paused: f.paused.checked, guest_downloads: f.guest_downloads.checked, guest_requests: f.guest_requests.checked };
+    if (body.delete_after_days > 0 && !state.settings.delete_after_days && !(await confirmBox("Delete expired accounts?", `Accounts will be deleted ${body.delete_after_days} day(s) after they expire, with their profiles and watch history. Accounts that already expired that long ago are deleted at the next check.`, "Turn on deletion"))) return;
+    try { state.settings = await api("settings", { method: "PUT", body }); fillSettings(); render(); buildNewForm(); toast("Settings saved."); } catch (e) { toast(e.message, true); }
+  });
+
+  $("#run-now").addEventListener("click", async (ev) => {
+    ev.target.disabled = true;
+    try {
+      const r = await api("run", { method: "POST" });
+      toast(r.skipped ? "Skipped: " + r.skipped : r.errors && r.errors.length ? `${r.errors.length} problem(s): ${r.errors[0]}` : `${r.due} due · ${r.disabled} disabled · ${r.deleted} deleted`, !!(r.errors && r.errors.length));
+      await load();
+    } catch (e) { toast(e.message, true); }
+    ev.target.disabled = false;
+  });
+
+  // ---- tabs and loading --------------------------------------------------
+  $$("nav.tabs button").forEach((b) => b.addEventListener("click", () => {
+    $$("nav.tabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    $$("section[data-panel]").forEach((s) => { s.hidden = s.dataset.panel !== b.dataset.tab; });
+  }));
+  ["#q", "#filter", "#hide-admins"].forEach((s) => $(s).addEventListener("input", renderRows));
+  $("#refresh").addEventListener("click", () => load().then(() => toast("Refreshed.")));
+
+  let first = true;
+  async function load() {
+    try {
+      state = await api("state");
+    } catch (e) {
+      $("#banners").innerHTML = `<div class="banner bad">Couldn't load: ${esc(e.message)}</div>`;
+      return;
+    }
+    render();
+    if (first) {
+      first = false;
+      fillSettings();
+      presetsDraft = (state.presets || []).map((p) => ({ ...p }));
+      renderPresets();
+      buildNewForm();
+    }
+  }
+  load();
+  setInterval(() => { if (state && !document.querySelector("dialog[open]")) render(); }, 60000);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+name: Release
+
+# Publishes a GitHub release whenever the "version" in manifest.json changes
+# on main (or when run by hand from the Actions tab). The release is tagged
+# v<version>; if that tag already exists, nothing happens. The binaries are
+# built from the same commit the tests ran on.
+
+on:
+  push:
+    branches: [main]
+    paths: [manifest.json, .github/workflows/release.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Read version
+        id: version
+        run: |
+          version=$(jq -r .version manifest.json)
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+            echo "Tag v${version} already exists; nothing to release."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-go@v5
+        if: steps.version.outputs.skip != 'true'
+        with:
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
+
+      - name: Test and build
+        if: steps.version.outputs.skip != 'true'
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+          make build VERSION="${{ steps.version.outputs.version }}"
+          cd dist && sha256sum guest-accounts-linux-* > checksums.txt
+
+      - name: Publish release
+        if: steps.version.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: v${{ steps.version.outputs.version }}
+          files: |
+            dist/guest-accounts-linux-amd64
+            dist/guest-accounts-linux-arm64
+            dist/checksums.txt
+          generate_release_notes: true
